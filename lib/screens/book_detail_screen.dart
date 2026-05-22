@@ -1,9 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/book.dart';
 import '../providers/books_provider.dart';
 import '../providers/favorites_provider.dart';
+import '../providers/nav_controller.dart';
+import '../theme/app_theme.dart';
+import '../widgets/book_cover.dart';
+import '../widgets/gradient_button.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final Book book;
@@ -17,19 +21,16 @@ class BookDetailScreen extends StatefulWidget {
 class _BookDetailScreenState extends State<BookDetailScreen> {
   late Book _book;
   bool _loadingDetail = true;
-  bool _isFavorite = false;
 
   @override
   void initState() {
     super.initState();
     _book = widget.book;
     _loadDetail();
-    _checkFavorite();
   }
 
   Future<void> _loadDetail() async {
-    final provider = context.read<BooksProvider>();
-    final detailed = await provider.fetchDetail(_book);
+    final detailed = await context.read<BooksProvider>().fetchDetail(_book);
     if (mounted) {
       setState(() {
         _book = detailed;
@@ -38,188 +39,352 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     }
   }
 
-  Future<void> _checkFavorite() async {
-    final favProvider = context.read<FavoritesProvider>();
-    final isFav = await favProvider.isFavorite(_book.key);
-    if (mounted) {
-      setState(() => _isFavorite = isFav);
-    }
-  }
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final favorites = context.watch<FavoritesProvider>();
+    final isFavorite = favorites.favorites.any((b) => b.key == _book.key);
 
-  void _toggleFavorite() {
-    final favProvider = context.read<FavoritesProvider>();
-    favProvider.toggleFavorite(_book);
-    setState(() => _isFavorite = !_isFavorite);
+    return Scaffold(
+      body: Stack(
+        children: [
+          CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: _Header(book: _book, isFavorite: isFavorite),
+              ),
+              if (_loadingDetail)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                )
+              else ...[
+                if (_book.description != null && _book.description!.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const _SectionHeader(title: 'Description'),
+                          const SizedBox(height: 12),
+                          Text(
+                            _book.description!,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              height: 1.7,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (_book.subjects.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const _SectionHeader(title: 'Categories'),
+                          const SizedBox(height: 14),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _book.subjects
+                                .map((s) => Chip(
+                                      label: Text(s),
+                                      labelStyle: theme.textTheme.labelMedium
+                                          ?.copyWith(color: AppColors.textSecondary),
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                      visualDensity: VisualDensity.compact,
+                                    ))
+                                .toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+              const SliverToBoxAdapter(child: SizedBox(height: 40)),
+            ],
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: _CircleButton(
+                icon: Icons.arrow_back,
+                onTap: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  final Book book;
+  final bool isFavorite;
+
+  const _Header({required this.book, required this.isFavorite});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final topInset = MediaQuery.of(context).padding.top;
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: RepaintBoundary(
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+              child: BookCover(
+                url: book.coverUrlMedium,
+                displayWidth: 360,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        ),
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: AppColors.heroScrim,
+                stops: [0.0, 0.5, 1.0],
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(20, topInset + 56, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: SizedBox(
+                  width: 170,
+                  height: 255,
+                  child: BookCover(
+                    url: book.coverUrl,
+                    displayWidth: 170,
+                    borderRadius: BorderRadius.circular(16),
+                    iconSize: 48,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                book.title,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  height: 1.15,
+                ),
+              ),
+              if (book.authorName != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  book.authorName!,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: AppColors.accent,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              _MetaPills(book: book),
+              const SizedBox(height: 18),
+              _FavoriteAction(book: book, isFavorite: isFavorite),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MetaPills extends StatelessWidget {
+  final Book book;
+
+  const _MetaPills({required this.book});
+
+  @override
+  Widget build(BuildContext context) {
+    final pills = <Widget>[];
+    if (book.firstPublishYear != null) {
+      pills.add(_Pill(icon: Icons.calendar_today_rounded, label: '${book.firstPublishYear}'));
+    }
+    if (book.numberOfPages != null) {
+      pills.add(_Pill(icon: Icons.menu_book_rounded, label: '${book.numberOfPages} pages'));
+    }
+    if (pills.isEmpty) return const SizedBox.shrink();
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 8,
+      alignment: WrapAlignment.center,
+      children: pills,
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _Pill({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceHigh.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.outline),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.textSecondary),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FavoriteAction extends StatelessWidget {
+  final Book book;
+  final bool isFavorite;
+
+  const _FavoriteAction({required this.book, required this.isFavorite});
+
+  Future<void> _onTap(BuildContext context) async {
+    final nav = context.read<NavController>();
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final added = await context.read<FavoritesProvider>().toggleFavorite(book);
+    if (!context.mounted) return;
+    if (added) {
+      nav.goToFavorites();
+      navigator.popUntil((route) => route.isFirst);
+    } else {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('Removed from your library')));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: const BackButton(),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: _isFavorite ? Colors.redAccent : null,
-            ),
-            onPressed: _toggleFavorite,
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return SizedBox(
+      width: double.infinity,
+      child: GradientButton(
+        onTap: () => _onTap(context),
+        solidColor: isFavorite ? AppColors.surfaceHigher : null,
+        glow: !isFavorite,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // --- Hero ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Cover
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: CachedNetworkImage(
-                      imageUrl: _book.coverUrl,
-                      width: 220,
-                      height: 330,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) => Container(
-                        width: 220,
-                        height: 330,
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        child: const Center(child: CircularProgressIndicator()),
-                      ),
-                      errorWidget: (_, _, _) => Container(
-                        width: 220,
-                        height: 330,
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        child: const Icon(Icons.menu_book, size: 48),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Title
-                  Text(
-                    _book.title,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-
-                  // Author
-                  if (_book.authorName != null)
-                    Text(
-                      _book.authorName!,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                  const SizedBox(height: 4),
-
-                  // Year / Pages
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (_book.firstPublishYear != null)
-                        Text(
-                          '${_book.firstPublishYear}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      if (_book.firstPublishYear != null && _book.numberOfPages != null)
-                        const Text(' · '),
-                      if (_book.numberOfPages != null)
-                        Text(
-                          '${_book.numberOfPages} pages',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              transitionBuilder: (child, anim) =>
+                  ScaleTransition(scale: anim, child: child),
+              child: Icon(
+                isFavorite ? Icons.favorite : Icons.favorite_border,
+                key: ValueKey(isFavorite),
+                size: 20,
+                color: isFavorite ? AppColors.favorite : AppColors.onAccent,
               ),
             ),
-
-            const SizedBox(height: 24),
-
-            // --- Description ---
-            if (_loadingDetail)
-              const Padding(
-                padding: EdgeInsets.all(32),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else ...[
-              if (_book.description != null && _book.description!.isNotEmpty) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: _sectionHeader(theme, 'Description'),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    _book.description!,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      height: 1.6,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-
-              // --- Subjects ---
-              if (_book.subjects.isNotEmpty) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: _sectionHeader(theme, 'Subjects'),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _book.subjects.map((s) {
-                      return Chip(
-                        label: Text(s, style: const TextStyle(fontSize: 13)),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                      );
-                    }).toList(),
-                  ),
-                ),
-                const SizedBox(height: 32),
-              ],
-            ],
+            const SizedBox(width: 8),
+            Text(
+              isFavorite ? 'In your library' : 'Add to library',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: isFavorite ? AppColors.textPrimary : AppColors.onAccent,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _sectionHeader(ThemeData theme, String title) {
+class _SectionHeader extends StatelessWidget {
+  final String title;
+
+  const _SectionHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Row(
       children: [
-        Text(
-          title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
+        Container(
+          width: 4,
+          height: 18,
+          decoration: BoxDecoration(
+            gradient: AppColors.accentGradient,
+            borderRadius: BorderRadius.circular(2),
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Container(height: 1, color: theme.colorScheme.outlineVariant),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
         ),
       ],
+    );
+  }
+}
+
+class _CircleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _CircleButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.4),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Icon(icon, color: Colors.white, size: 22),
+        ),
+      ),
     );
   }
 }

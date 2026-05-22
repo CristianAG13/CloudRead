@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/book.dart';
+import '../theme/app_theme.dart';
+import 'book_cover.dart';
+import 'favorite_button.dart';
+import 'hover_scale.dart';
 
+/// Grid card used in Search, Favorites and category browsing.
 class BookCard extends StatelessWidget {
   final Book book;
   final bool isFavorite;
@@ -19,107 +23,77 @@ class BookCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final radius = BorderRadius.circular(12);
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // --- Cover ---
-            Stack(
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AspectRatio(
+            aspectRatio: 2 / 3,
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                AspectRatio(
-                  aspectRatio: 2 / 3,
-                  child: CachedNetworkImage(
-                    imageUrl: book.coverUrlMedium,
-                    fit: BoxFit.cover,
-                    placeholder: (_, _) => Container(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      child: const Center(child: Icon(Icons.menu_book, size: 36)),
+                HoverScale(
+                  glowRadius: radius,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: radius,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
                     ),
-                    errorWidget: (_, _, _) => Container(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      child: const Center(child: Icon(Icons.menu_book, size: 36)),
+                    child: BookCover(
+                      url: book.coverUrlMedium,
+                      displayWidth: 190,
+                      borderRadius: radius,
                     ),
                   ),
                 ),
                 Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Material(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(20),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(20),
-                      onTap: onToggleFavorite,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Icon(
-                          isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: isFavorite
-                              ? Colors.redAccent
-                              : Colors.white70,
-                          size: 20,
-                        ),
-                      ),
-                    ),
+                  top: 6,
+                  right: 6,
+                  child: FavoriteButton(
+                    isFavorite: isFavorite,
+                    onTap: onToggleFavorite,
                   ),
                 ),
               ],
             ),
-            // --- Info ---
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    book.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      height: 1.25,
-                    ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  book.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    book.authorName ?? 'Unknown',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  book.authorName ?? 'Unknown author',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textMuted,
                   ),
-                  if (book.firstPublishYear != null) ...[
-                    const SizedBox(height: 1),
-                    Text(
-                      '${book.firstPublishYear}',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant
-                            .withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

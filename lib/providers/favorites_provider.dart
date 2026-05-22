@@ -11,7 +11,11 @@ class FavoritesProvider extends ChangeNotifier {
 
   /// Load all favorites from DB
   Future<void> loadFavorites() async {
-    _favorites = await DatabaseService.getFavorites();
+    try {
+      _favorites = await DatabaseService.getFavorites();
+    } catch (_) {
+      _favorites = [];
+    }
     _initialized = true;
     notifyListeners();
   }
@@ -21,17 +25,26 @@ class FavoritesProvider extends ChangeNotifier {
     return DatabaseService.isFavorite(key);
   }
 
-  /// Toggle favorite status
-  Future<void> toggleFavorite(Book book) async {
+  /// Toggle favorite status. Returns `true` if the book was added,
+  /// `false` if it was removed. Updates in-memory state immediately and
+  /// persists best-effort (web has no sqflite, so persistence is skipped).
+  Future<bool> toggleFavorite(Book book) async {
     final exists = _favorites.any((b) => b.key == book.key);
     if (exists) {
-      await DatabaseService.removeFavorite(book.key);
       _favorites.removeWhere((b) => b.key == book.key);
+      notifyListeners();
+      try {
+        await DatabaseService.removeFavorite(book.key);
+      } catch (_) {}
+      return false;
     } else {
-      await DatabaseService.addFavorite(book);
       _favorites.insert(0, book);
+      notifyListeners();
+      try {
+        await DatabaseService.addFavorite(book);
+      } catch (_) {}
+      return true;
     }
-    notifyListeners();
   }
 
   /// Remove from favorites
