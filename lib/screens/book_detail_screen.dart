@@ -8,6 +8,7 @@ import '../providers/nav_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/book_cover.dart';
 import '../widgets/gradient_button.dart';
+import 'category_screen.dart';
 import 'reader_screen.dart';
 
 class BookDetailScreen extends StatefulWidget {
@@ -38,6 +39,27 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         _loadingDetail = false;
       });
     }
+  }
+
+  /// Opens [CategoryScreen] for the given human-readable subject label.
+  /// The label is normalized to Open Library's URL format (lowercase, spaces
+  /// → underscores, special characters stripped) so the query succeeds.
+  void _openCategory(String label) {
+    final subject = _normalizeSubject(label);
+    if (subject.isEmpty) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CategoryScreen(subject: subject, label: label),
+      ),
+    );
+  }
+
+  static String _normalizeSubject(String label) {
+    return label
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r"[^a-z0-9\s_-]"), '')
+        .replaceAll(RegExp(r"\s+"), '_');
   }
 
   @override
@@ -95,13 +117,14 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                             spacing: 8,
                             runSpacing: 8,
                             children: _book.subjects
-                                .map((s) => Chip(
-                                      label: Text(s),
+                                .map((label) => ActionChip(
+                                      label: Text(label),
                                       labelStyle: theme.textTheme.labelMedium
                                           ?.copyWith(color: AppColors.textSecondary),
                                       materialTapTargetSize:
                                           MaterialTapTargetSize.shrinkWrap,
                                       visualDensity: VisualDensity.compact,
+                                      onPressed: () => _openCategory(label),
                                     ))
                                 .toList(),
                           ),
