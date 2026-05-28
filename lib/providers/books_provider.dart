@@ -172,14 +172,20 @@ class BooksProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Fetch full detail for a book (description, subjects, page count).
+  /// Fetch full detail for a book (description, subjects, page count) and,
+  /// in parallel, check whether a readable digital copy is available on
+  /// Internet Archive.
   Future<Book> fetchDetail(Book baseBook) async {
     try {
-      final detail = await _api.fetchWorkDetails(baseBook.key);
+      final detailFuture = _api.fetchWorkDetails(baseBook.key);
+      final readUrlFuture = _api.fetchReadUrl(baseBook.key);
+      final detail = await detailFuture;
+      final readUrl = await readUrlFuture;
       return baseBook.copyWith(
         description: detail.description,
         subjects: detail.subjects,
         numberOfPages: detail.numberOfPages,
+        readUrl: readUrl,
       );
     } catch (_) {
       return baseBook;

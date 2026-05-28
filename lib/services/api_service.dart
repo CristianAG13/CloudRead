@@ -67,5 +67,33 @@ class ApiService {
     return Book.fromDetailJson(data);
   }
 
+  /// Looks for a readable digital copy of the work on Internet Archive.
+  ///
+  /// Iterates the work's editions and returns the URL of the first one with
+  /// an Internet Archive identifier (`ocaid`). Returns `null` when no edition
+  /// has a digital scan available — which is the case for most copyrighted
+  /// modern titles. Failures (network, parsing) are swallowed and reported
+  /// as `null` so the UI can simply hide the "Read" button.
+  Future<String?> fetchReadUrl(String workKey) async {
+    try {
+      final uri = Uri.parse('$_baseUrl$workKey/editions.json?limit=20');
+      final response = await http.get(uri);
+      if (response.statusCode != 200) return null;
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final entries = (data['entries'] as List?) ?? const [];
+      for (final entry in entries) {
+        if (entry is! Map<String, dynamic>) continue;
+        final ocaid = entry['ocaid'] as String?;
+        if (ocaid != null && ocaid.isNotEmpty) {
+          return 'https://archive.org/details/$ocaid';
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   List<String> get trendingSubjects => _trendingSubjects;
 }

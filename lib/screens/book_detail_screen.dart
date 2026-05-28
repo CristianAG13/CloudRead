@@ -8,6 +8,7 @@ import '../providers/nav_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/book_cover.dart';
 import '../widgets/gradient_button.dart';
+import 'reader_screen.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final Book book;
@@ -213,11 +214,58 @@ class _Header extends StatelessWidget {
               const SizedBox(height: 14),
               _MetaPills(book: book),
               const SizedBox(height: 18),
+              if (book.readUrl != null) ...[
+                _ReadAction(book: book),
+                const SizedBox(height: 10),
+              ],
               _FavoriteAction(book: book, isFavorite: isFavorite),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Opens the embedded reader. Shown only when the work has a readable copy
+/// on Internet Archive (i.e. `book.readUrl != null`).
+class _ReadAction extends StatelessWidget {
+  final Book book;
+
+  const _ReadAction({required this.book});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      width: double.infinity,
+      child: GradientButton(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ReaderScreen(
+                url: book.readUrl!,
+                title: book.title,
+              ),
+            ),
+          );
+        },
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.auto_stories_rounded,
+                size: 20, color: AppColors.onAccent),
+            const SizedBox(width: 8),
+            Text(
+              'Read now',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: AppColors.onAccent,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

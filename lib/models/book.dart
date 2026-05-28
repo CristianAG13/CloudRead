@@ -8,6 +8,11 @@ class Book {
   final List<String> subjects;
   final int? numberOfPages;
 
+  /// URL of the readable copy on Internet Archive. `null` when the book
+  /// has no available digital scan (e.g. modern copyrighted titles).
+  /// Populated by [ApiService.fetchReadUrl] on demand, not persisted.
+  final String? readUrl;
+
   Book({
     required this.key,
     required this.title,
@@ -17,6 +22,7 @@ class Book {
     this.description,
     this.subjects = const [],
     this.numberOfPages,
+    this.readUrl,
   });
 
   factory Book.fromSearchJson(Map<String, dynamic> json) {
@@ -116,6 +122,7 @@ class Book {
     String? description,
     List<String>? subjects,
     int? numberOfPages,
+    String? readUrl,
   }) {
     return Book(
       key: key,
@@ -126,6 +133,7 @@ class Book {
       description: description ?? this.description,
       subjects: subjects ?? this.subjects,
       numberOfPages: numberOfPages ?? this.numberOfPages,
+      readUrl: readUrl ?? this.readUrl,
     );
   }
 }
