@@ -1,62 +1,76 @@
 import 'package:flutter/foundation.dart';
-import '../models/book.dart';
-import '../services/database_service.dart';
 
+import '../models/book.dart';
+import '../services/favorites_storage.dart';
+
+/// Holds the user's favorite books in memory and keeps them in sync with a
+/// persistent [FavoritesStorage] backend.
+///
+/// The provider exposes synchronous getters / search so the UI never has to
+/// `await` to render. Persistence happens in the background as a best-effort
+/// operation after each mutation, which keeps the UI snappy.
 class FavoritesProvider extends ChangeNotifier {
-  List<Book> _favorites = [];
+  final FavoritesStorage _storage;
+
+  List<Book> _favorites = const [];
   bool _initialized = false;
 
-  List<Book> get favorites => _favorites;
+  /// Injects the storage backend (Dependency Inversion principle). Defaults
+  /// to the SharedPreferences-backed implementation for production use.
+  FavoritesProvider({FavoritesStorage? storage})
+      : _storage = storage ?? SharedPreferencesFavoritesStorage();
+
+  /// Read-only view of the favorites list (UI cannot mutate it directly).
+  List<Book> get favorites => List.unmodifiable(_favorites);
+
+  /// `true` once the initial load from storage has finished.
   bool get initialized => _initialized;
 
-  /// Load all favorites from DB
+  /// Whether the given book is currently in the favorites list.
+  bool isFavorite(String key) => _favorites.any((b) => b.key == key);
+
+  /// Loads favorites from persistent storage into memory.
   Future<void> loadFavorites() async {
-    try {
-      _favorites = await DatabaseService.getFavorites();
-    } catch (_) {
-      _favorites = [];
-    }
+    _favorites = await _storage.load();
     _initialized = true;
     notifyListeners();
   }
 
-  /// Check if a book is favorited
-  Future<bool> isFavorite(String key) async {
-    return DatabaseService.isFavorite(key);
-  }
-
-  /// Toggle favorite status. Returns `true` if the book was added,
-  /// `false` if it was removed. Updates in-memory state immediately and
-  /// persists best-effort (web has no sqflite, so persistence is skipped).
+  /// Toggles favorite status for [book]. Returns `true` if the book was
+  /// added, `false` if it was removed. The in-memory state is updated and
+  /// listeners are notified *before* persistence so the UI responds instantly.
   Future<bool> toggleFavorite(Book book) async {
-    final exists = _favorites.any((b) => b.key == book.key);
-    if (exists) {
-      _favorites.removeWhere((b) => b.key == book.key);
-      notifyListeners();
-      try {
-        await DatabaseService.removeFavorite(book.key);
-      } catch (_) {}
-      return false;
+    final wasFavorite = isFavorite(book.key);
+    final updated = List<Book>.of(_favorites);
+    if (wasFavorite) {
+      updated.removeWhere((b) => b.key == book.key);
     } else {
-      _favorites.insert(0, book);
-      notifyListeners();
-      try {
-        await DatabaseService.addFavorite(book);
-      } catch (_) {}
-      return true;
+      updated.insert(0, book);
     }
-  }
-
-  /// Remove from favorites
-  Future<void> removeFavorite(String key) async {
-    await DatabaseService.removeFavorite(key);
-    _favorites.removeWhere((b) => b.key == key);
+    _favorites = updated;
     notifyListeners();
+
+    await _storage.save(_favorites);
+    return !wasFavorite;
   }
 
-  /// Search within favorites (local)
-  Future<List<Book>> searchFavorites(String query) async {
-    if (query.trim().isEmpty) return _favorites;
-    return DatabaseService.searchFavorites(query);
+  /// Removes a book from favorites by key. No-op if it is not present.
+  Future<void> removeFavorite(String key) async {
+    if (!isFavorite(key)) return;
+    _favorites = _favorites.where((b) => b.key != key).toList(growable: false);
+    notifyListeners();
+    await _storage.save(_favorites);
+  }
+
+  /// Case-insensitive in-memory search by title or author. Returns the full
+  /// list when [query] is empty or whitespace.
+  List<Book> searchFavorites(String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return favorites;
+    return _favorites
+        .where((b) =>
+            b.title.toLowerCase().contains(q) ||
+            (b.authorName?.toLowerCase().contains(q) ?? false))
+        .toList(growable: false);
   }
 }

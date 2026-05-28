@@ -39,7 +39,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   void _onSearchChanged(String query) {
     setState(() {});
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 250), () async {
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted) return;
       final provider = context.read<FavoritesProvider>();
       if (query.trim().isEmpty) {
         setState(() {
@@ -47,13 +48,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           _isSearching = false;
         });
       } else {
-        final results = await provider.searchFavorites(query);
-        if (mounted) {
-          setState(() {
-            _filtered = results;
-            _isSearching = true;
-          });
-        }
+        setState(() {
+          _filtered = provider.searchFavorites(query);
+          _isSearching = true;
+        });
       }
     });
   }

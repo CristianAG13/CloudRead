@@ -70,23 +70,8 @@ class Book {
     );
   }
 
-  /// For SQLite row
-  factory Book.fromMap(Map<String, dynamic> map) {
-    return Book(
-      key: map['key'] as String? ?? '',
-      title: map['title'] as String? ?? '',
-      authorName: map['author_name'] as String?,
-      coverId: map['cover_id'] as int?,
-      firstPublishYear: map['first_publish_year'] as int?,
-      description: map['description'] as String?,
-      subjects: (map['subjects'] as String?)?.isNotEmpty == true
-          ? (map['subjects'] as String).split('|')
-          : [],
-      numberOfPages: map['number_of_pages'] as int?,
-    );
-  }
-
-  Map<String, dynamic> toMap() {
+  /// Serializes the book to a JSON-compatible map suitable for storage.
+  Map<String, dynamic> toJson() {
     return {
       'key': key,
       'title': title,
@@ -94,9 +79,23 @@ class Book {
       'cover_id': coverId,
       'first_publish_year': firstPublishYear,
       'description': description,
-      'subjects': subjects.join('|'),
+      'subjects': subjects,
       'number_of_pages': numberOfPages,
     };
+  }
+
+  /// Restores a [Book] from a stored JSON map. Tolerates missing fields.
+  factory Book.fromJson(Map<String, dynamic> json) {
+    return Book(
+      key: json['key'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      authorName: json['author_name'] as String?,
+      coverId: json['cover_id'] as int?,
+      firstPublishYear: json['first_publish_year'] as int?,
+      description: json['description'] as String?,
+      subjects: (json['subjects'] as List?)?.cast<String>() ?? const [],
+      numberOfPages: json['number_of_pages'] as int?,
+    );
   }
 
   String get coverUrl {
