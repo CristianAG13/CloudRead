@@ -4,6 +4,7 @@ import '../providers/nav_controller.dart';
 import 'home_screen.dart';
 import 'search_screen.dart';
 import 'favorites_screen.dart';
+import 'stats_screen.dart';
 
 class HomeShell extends StatelessWidget {
   const HomeShell({super.key});
@@ -16,6 +17,7 @@ class HomeShell extends StatelessWidget {
       HomeScreen(),
       SearchScreen(),
       FavoritesScreen(),
+      StatsScreen(),
     ];
 
     return Scaffold(
@@ -38,6 +40,11 @@ class HomeShell extends StatelessWidget {
             icon: Icon(Icons.favorite_outline),
             selectedIcon: Icon(Icons.favorite_rounded),
             label: 'Favorites',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.bar_chart_outlined),
+            selectedIcon: Icon(Icons.bar_chart_rounded),
+            label: 'Stats',
           ),
         ],
       ),

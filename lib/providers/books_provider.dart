@@ -53,10 +53,15 @@ class BooksProvider extends ChangeNotifier {
   LoadingState _searchState = LoadingState.idle;
   List<Book> _searchResults = [];
   String _currentQuery = '';
+  int _searchPage = 1;
+  int _searchNumFound = 0;
+  bool _searchHasMore = false;
 
   LoadingState get searchState => _searchState;
   List<Book> get searchResults => _searchResults;
   String get currentQuery => _currentQuery;
+  bool get searchHasMore => _searchHasMore;
+  int get searchNumFound => _searchNumFound;
 
   // --- Category browse ---
   LoadingState _browseState = LoadingState.idle;
@@ -74,11 +79,12 @@ class BooksProvider extends ChangeNotifier {
     notifyListeners();
 
     final subjects = kCategories.keys.toList()..shuffle(Random());
-    final picked = subjects.take(6).toList();
+    final picked = subjects.take(5).toList(); // Changed from 6 to 5
 
     try {
+      // Reduced limit from 18 to 10 for much faster load times
       final results = await Future.wait(
-        picked.map((s) => _api.fetchBooksBySubject(subject: s, limit: 18)),
+        picked.map((s) => _api.fetchBooksBySubject(subject: s, limit: 10)),
       );
 
       final shelves = <Shelf>[];
@@ -120,7 +126,7 @@ class BooksProvider extends ChangeNotifier {
     return candidates[Random().nextInt(candidates.length)];
   }
 
-  /// Search books by free-text query.
+  /// Search books by free-text query. Resets pagination on new query.
   Future<void> searchBooks(String query) async {
     _currentQuery = query;
     if (query.trim().isEmpty) {
@@ -131,10 +137,16 @@ class BooksProvider extends ChangeNotifier {
     }
 
     _searchState = LoadingState.loading;
+    _searchPage = 1;
+    _searchHasMore = false;
     notifyListeners();
 
     try {
-      _searchResults = await _api.searchBooks(query);
+      final result = await _api.searchBooks(query, page: 1);
+      _searchResults = result.books;
+      _searchNumFound = result.numFound;
+      _searchHasMore = result.books.length < result.numFound;
+      _searchPage = 1;
       _searchState = LoadingState.loaded;
     } catch (e) {
       _errorMessage = e.toString();
@@ -144,10 +156,36 @@ class BooksProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Fetch the next page of search results and append them.
+  Future<void> fetchMoreSearchResults() async {
+    if (_searchState != LoadingState.loaded || !_searchHasMore) return;
+
+    _searchState = LoadingState.loading;
+    notifyListeners();
+
+    final nextPage = _searchPage + 1;
+    try {
+      final result = await _api.searchBooks(_currentQuery, page: nextPage);
+      _searchResults = [..._searchResults, ...result.books];
+      _searchNumFound = result.numFound;
+      _searchPage = nextPage;
+      _searchHasMore = _searchResults.length < result.numFound;
+      _searchState = LoadingState.loaded;
+    } catch (e) {
+      // Keep existing results on error, just mark loaded
+      _searchState = LoadingState.loaded;
+    }
+
+    notifyListeners();
+  }
+
   void clearSearch() {
     _searchResults = [];
     _searchState = LoadingState.idle;
     _currentQuery = '';
+    _searchPage = 1;
+    _searchHasMore = false;
+    _searchNumFound = 0;
     notifyListeners();
   }
 

@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-import '../theme/app_theme.dart';
-
 /// Full-screen reader for digitized books hosted by Internet Archive.
 ///
 /// On mobile / desktop the page is embedded with `webview_flutter` so the
@@ -36,7 +34,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     if (!kIsWeb) {
       _controller = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setBackgroundColor(AppColors.background)
+        ..setBackgroundColor(Theme.of(context).colorScheme.surfaceContainerLowest)
         ..setNavigationDelegate(NavigationDelegate(
           onPageStarted: (_) {
             if (mounted) setState(() => _isLoading = true);
@@ -80,8 +78,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.open_in_new_rounded,
-                    size: 56, color: AppColors.accent),
+                Icon(Icons.open_in_new_rounded,
+                    size: 56, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(height: 16),
                 Text(
                   'Opening the reader in a new tab…',
@@ -92,7 +90,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   'If your browser blocked the popup, use the button below.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall
-                      ?.copyWith(color: AppColors.textMuted),
+                      ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 20),
                 FilledButton.icon(
@@ -122,10 +120,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
         children: [
           if (_controller != null) WebViewWidget(controller: _controller!),
           if (_isLoading)
-            const LinearProgressIndicator(
+            LinearProgressIndicator(
               minHeight: 3,
-              color: AppColors.accent,
-              backgroundColor: AppColors.surfaceHigh,
+              color: Theme.of(context).colorScheme.primary,
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
         ],
       ),

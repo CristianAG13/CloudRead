@@ -1,0 +1,45 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Flutter 3.11+, Dart, Provider (state mgmt), SharedPreferences (persistence),
+  cached_network_image, google_fonts, webview_flutter, share_plus, url_launcher.
+  Architecture: Clean/Hexagonal-ish with abstract storage contracts and provider-driven UI.
+  Testing: flutter_test (default), only a smoke test exists. flutter_lints active.
+  Style: flutter_lints, const widgets, low-comment policy.
+
+strict_tdd: false
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected modules/packages
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Document architecture decisions with rationale
+  tasks:
+    - Group tasks by phase (model, provider, storage, ui, perf, tests)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+    - Keep tasks small enough to complete in one session
+  apply:
+    - Follow existing code patterns and conventions
+    - Do NOT add comments unless asked
+    - Keep provider changes backward-compatible at the public API level
+  verify:
+    - Run `flutter analyze` and ensure no errors/warnings introduced
+    - Run `flutter test` and ensure existing tests still pass
+    - Compare implementation against every spec scenario
+  archive:
+    - Sync delta specs into main specs
+    - Move change folder to archive/ with date
+
+testing:
+  runner: flutter test
+  unit: AVAILABLE
+  integration: NOT INSTALLED
+  e2e: NOT INSTALLED
+  coverage: NOT AVAILABLE
+  linter: flutter analyze
+  type_checker: dart analyze
+  formatter: dart format

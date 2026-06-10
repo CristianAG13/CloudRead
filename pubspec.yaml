@@ -39,6 +39,7 @@ dependencies:
   google_fonts: ^6.2.1
   webview_flutter: ^4.10.0
   url_launcher: ^6.3.0
+  share_plus: ^13.1.0
 
 dev_dependencies:
   flutter_test:
@@ -55,6 +56,10 @@ dev_dependencies:
   # from a single 1024x1024 PNG source. Run with:
   #     dart run flutter_launcher_icons
   flutter_launcher_icons: ^0.14.1
+
+  # Native splash screen that shows before Flutter loads.
+  # Run `dart run flutter_native_splash:create` after placing the logo.
+  flutter_native_splash: ^2.4.4
 
 # Configuration for the `flutter_launcher_icons` package. The source image
 # lives at `assets/icon/app_icon.png` and should be 1024x1024 PNG. Adaptive
@@ -78,6 +83,16 @@ flutter_launcher_icons:
     image_path: "assets/icon/app_icon.png"
     icon_size: 48
 
+flutter_native_splash:
+  color: "#0B0B0D"
+  image: assets/images/logo.png
+  android: true
+  ios: true
+  web: false
+  android_gravity: center
+  ios_content_mode: center
+  fullscreen: true
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -89,10 +104,8 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/images/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

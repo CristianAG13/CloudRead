@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/book.dart';
-import '../theme/app_theme.dart';
 import 'book_cover.dart';
 import 'favorite_button.dart';
 import 'hover_scale.dart';
@@ -88,7 +87,7 @@ class BookPoster extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textMuted,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ],

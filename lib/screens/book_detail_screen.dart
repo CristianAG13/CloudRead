@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart'; // Add url_launcher
 import '../models/book.dart';
 import '../providers/books_provider.dart';
 import '../providers/favorites_provider.dart';
@@ -9,7 +10,6 @@ import '../theme/app_theme.dart';
 import '../widgets/book_cover.dart';
 import '../widgets/gradient_button.dart';
 import 'category_screen.dart';
-import 'reader_screen.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final Book book;
@@ -97,7 +97,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                             _book.description!,
                             style: theme.textTheme.bodyLarge?.copyWith(
                               height: 1.7,
-                              color: AppColors.textSecondary,
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -120,7 +120,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                 .map((label) => ActionChip(
                                       label: Text(label),
                                       labelStyle: theme.textTheme.labelMedium
-                                          ?.copyWith(color: AppColors.textSecondary),
+                                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                                       materialTapTargetSize:
                                           MaterialTapTargetSize.shrinkWrap,
                                       visualDensity: VisualDensity.compact,
@@ -176,14 +176,16 @@ class _Header extends StatelessWidget {
             ),
           ),
         ),
-        const Positioned.fill(
+        Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: AppColors.heroScrim,
-                stops: [0.0, 0.5, 1.0],
+                colors: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.heroScrim
+                    : [Colors.transparent, Colors.white.withValues(alpha: 0.85), Colors.white],
+                stops: const [0.0, 0.5, 1.0],
               ),
             ),
           ),
@@ -198,7 +200,7 @@ class _Header extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.5),
+                      color: Colors.black.withOpacity(0.5),
                       blurRadius: 24,
                       offset: const Offset(0, 10),
                     ),
@@ -207,11 +209,14 @@ class _Header extends StatelessWidget {
                 child: SizedBox(
                   width: 170,
                   height: 255,
-                  child: BookCover(
-                    url: book.coverUrl,
-                    displayWidth: 170,
-                    borderRadius: BorderRadius.circular(16),
-                    iconSize: 48,
+                  child: Hero(
+                    tag: 'book_cover_${book.key}',
+                    child: BookCover(
+                      url: book.coverUrl,
+                      displayWidth: 340,
+                      borderRadius: BorderRadius.circular(16),
+                      iconSize: 48,
+                    ),
                   ),
                 ),
               ),
@@ -230,7 +235,7 @@ class _Header extends StatelessWidget {
                   book.authorName!,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.titleMedium?.copyWith(
-                    color: AppColors.accent,
+                    color: theme.colorScheme.primary,
                   ),
                 ),
               ],
@@ -263,26 +268,27 @@ class _ReadAction extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: GradientButton(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => ReaderScreen(
-                url: book.readUrl!,
-                title: book.title,
-              ),
-            ),
-          );
+        onTap: () async {
+          final uri = Uri.parse(book.readUrl!);
+          if (await canLaunchUrl(uri)) {
+            // Esto abre el navegador integrado SIN salir de la app en celular,
+            // o en una pestaña nueva si estás en Web / Windows
+            await launchUrl(
+              uri,
+              mode: LaunchMode.inAppBrowserView,
+            );
+          }
         },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.auto_stories_rounded,
-                size: 20, color: AppColors.onAccent),
+            Icon(Icons.auto_stories_rounded,
+                size: 20, color: theme.colorScheme.onPrimary),
             const SizedBox(width: 8),
             Text(
               'Read now',
               style: theme.textTheme.labelLarge?.copyWith(
-                color: AppColors.onAccent,
+                color: theme.colorScheme.onPrimary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -327,21 +333,22 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.surfaceHigh.withValues(alpha: 0.7),
+        color: colors.surfaceContainer.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.outline),
+        border: Border.all(color: colors.outline),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.textSecondary),
+          Icon(icon, size: 14, color: colors.onSurfaceVariant),
           const SizedBox(width: 6),
           Text(
             label,
-            style: theme.textTheme.labelMedium?.copyWith(color: AppColors.textSecondary),
+            style: theme.textTheme.labelMedium?.copyWith(color: colors.onSurfaceVariant),
           ),
         ],
       ),
@@ -365,20 +372,35 @@ class _FavoriteAction extends StatelessWidget {
       nav.goToFavorites();
       navigator.popUntil((route) => route.isFirst);
     } else {
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Removed from your library')));
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(SnackBar(
+        content: const Text('Removed from your library'),
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () async {
+            // Try to cancel pending remove and re-add locally.
+            final provider = context.read<FavoritesProvider>();
+            final cancelled = await provider.cancelPendingAction(book.key);
+            if (cancelled) {
+              // Re-add the book locally; toggleFavorite will enqueue an 'add'.
+              await provider.toggleFavorite(book);
+            }
+          },
+        ),
+      ));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     return SizedBox(
       width: double.infinity,
       child: GradientButton(
         onTap: () => _onTap(context),
-        solidColor: isFavorite ? AppColors.surfaceHigher : null,
+        solidColor: isFavorite ? colors.surfaceContainerHighest : null,
         glow: !isFavorite,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -391,14 +413,14 @@ class _FavoriteAction extends StatelessWidget {
                 isFavorite ? Icons.favorite : Icons.favorite_border,
                 key: ValueKey(isFavorite),
                 size: 20,
-                color: isFavorite ? AppColors.favorite : AppColors.onAccent,
+                color: isFavorite ? AppColors.favorite : colors.onPrimary,
               ),
             ),
             const SizedBox(width: 8),
             Text(
               isFavorite ? 'In your library' : 'Add to library',
               style: theme.textTheme.labelLarge?.copyWith(
-                color: isFavorite ? AppColors.textPrimary : AppColors.onAccent,
+                color: isFavorite ? colors.onSurface : colors.onPrimary,
                 fontWeight: FontWeight.w700,
               ),
             ),

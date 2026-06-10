@@ -4,12 +4,14 @@ class EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
   final String? subtitle;
+  final Widget? action;
 
   const EmptyState({
     super.key,
     required this.icon,
     required this.title,
     this.subtitle,
+    this.action,
   });
 
   @override
@@ -40,6 +42,10 @@ class EmptyState extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                 ),
               ),
+            ],
+            if (action != null) ...[
+              const SizedBox(height: 24),
+              action!,
             ],
           ],
         ),

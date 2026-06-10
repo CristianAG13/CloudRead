@@ -5,7 +5,6 @@ import '../providers/books_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../providers/nav_controller.dart';
 import '../models/book.dart';
-import '../theme/app_theme.dart';
 import '../widgets/book_grid.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
@@ -20,6 +19,7 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
   Timer? _debounce;
 
   static const _suggestions = [
@@ -34,10 +34,24 @@ class _SearchScreenState extends State<SearchScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     _debounce?.cancel();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 400) {
+      context.read<BooksProvider>().fetchMoreSearchResults();
+    }
   }
 
   void _onSearchChanged(String query) {
@@ -137,7 +151,7 @@ class _SearchScreenState extends State<SearchScreen> {
       return _Suggestions(terms: _suggestions, onTap: _runSuggestion);
     }
 
-    if (provider.searchState == LoadingState.loading) {
+    if (provider.searchState == LoadingState.loading && provider.searchResults.isEmpty) {
       return const LoadingWidget(message: 'Searching...');
     }
 
@@ -157,14 +171,15 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     return CustomScrollView(
+      controller: _scrollController,
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: Text(
-              '${provider.searchResults.length} results',
+              '${provider.searchNumFound} results',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textMuted,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
             ),
           ),
@@ -175,6 +190,13 @@ class _SearchScreenState extends State<SearchScreen> {
           onBookTap: _openDetail,
           onToggleFavorite: _toggleFavorite,
         ),
+        if (provider.searchState == LoadingState.loading)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ),
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
       ],
     );
@@ -213,9 +235,9 @@ class _Suggestions extends StatelessWidget {
               return ActionChip(
                 label: Text(t),
                 onPressed: () => onTap(t),
-                backgroundColor: AppColors.surfaceHigh,
+                backgroundColor: theme.colorScheme.surfaceContainer,
                 labelStyle: theme.textTheme.labelLarge?.copyWith(
-                  color: AppColors.textSecondary,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               );
             }).toList(),
@@ -246,14 +268,14 @@ class _MessageState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 64, color: AppColors.textMuted),
+            Icon(icon, size: 64, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(height: 16),
             Text(title, style: theme.textTheme.titleMedium),
             const SizedBox(height: 6),
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ],
         ),

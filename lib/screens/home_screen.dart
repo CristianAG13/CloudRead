@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../helpers/responsive.dart';
 import '../providers/books_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../providers/nav_controller.dart';
+import '../providers/theme_provider.dart';
 import '../models/book.dart';
-import '../theme/app_theme.dart';
 import '../widgets/book_carousel.dart';
 import '../widgets/category_chips.dart';
 import '../widgets/featured_hero.dart';
-import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
+import '../widgets/shimmer_loading.dart';
 import 'book_detail_screen.dart';
 import 'category_screen.dart';
 
@@ -55,18 +56,16 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<BooksProvider>();
-    final favorites = context.watch<FavoritesProvider>();
-    final favoriteKeys = favorites.favorites.map((b) => b.key).toSet();
 
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: _buildBody(provider, favoriteKeys),
+        child: _buildBody(context, provider),
       ),
     );
   }
 
-  Widget _buildBody(BooksProvider provider, Set<String> favoriteKeys) {
+  Widget _buildBody(BuildContext context, BooksProvider provider) {
     switch (provider.homeState) {
       case LoadingState.idle:
       case LoadingState.loading:
@@ -74,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _TopBar(onShuffle: provider.loadHome),
             const _SearchBarButton(),
-            const Expanded(child: LoadingWidget(message: 'Curating your shelves...')),
+            const Expanded(child: ShimmerHomeLoading()),
           ],
         );
 
@@ -92,63 +91,73 @@ class _HomeScreenState extends State<HomeScreen> {
         );
 
       case LoadingState.loaded:
-        return RefreshIndicator(
-          color: AppColors.accent,
-          backgroundColor: AppColors.surfaceHigh,
-          onRefresh: provider.loadHome,
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(child: _TopBar(onShuffle: provider.loadHome)),
-              const SliverToBoxAdapter(child: _SearchBarButton()),
-              if (provider.featured != null)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: FeaturedHero(
-                      book: provider.featured!,
-                      isFavorite: favoriteKeys.contains(provider.featured!.key),
-                      onTap: () => _openDetail(provider.featured!),
-                      onToggleFavorite: () => _toggleFavorite(provider.featured!),
-                    ),
-                  ),
-                ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                  child: Text(
-                    'Browse by category',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+        final posterWidth = Responsive.posterWidth(context);
+        return Selector<FavoritesProvider, Set<String>>(
+          selector: (_, f) => f.favorites.map((b) => b.key).toSet(),
+          builder: (ctx, favoriteKeys, _) => Center(
+            child: SizedBox(
+              width: Responsive.maxContentWidth(context),
+              child: RefreshIndicator(
+                color: Theme.of(ctx).colorScheme.primary,
+                backgroundColor: Theme.of(ctx).colorScheme.surfaceContainer,
+                onRefresh: provider.loadHome,
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(child: _TopBar(onShuffle: provider.loadHome)),
+                    const SliverToBoxAdapter(child: _SearchBarButton()),
+                    if (provider.featured != null)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: FeaturedHero(
+                            book: provider.featured!,
+                            isFavorite: favoriteKeys.contains(provider.featured!.key),
+                            onTap: () => _openDetail(provider.featured!),
+                            onToggleFavorite: () => _toggleFavorite(provider.featured!),
+                          ),
                         ),
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: CategoryChips(
-                  categories: provider.categories,
-                  onSelected: _openCategory,
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              SliverList.builder(
-                itemCount: provider.shelves.length,
-                itemBuilder: (context, index) {
-                  final shelf = provider.shelves[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 28),
-                    child: BookCarousel(
-                      title: shelf.label,
-                      books: shelf.books,
-                      favoriteKeys: favoriteKeys,
-                      onBookTap: _openDetail,
-                      onToggleFavorite: _toggleFavorite,
-                      onSeeAll: () => _openCategory(shelf.subject, shelf.label),
+                      ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
+                        child: Text(
+                          'Browse by category',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ),
                     ),
-                  );
-                },
+                    SliverToBoxAdapter(
+                      child: CategoryChips(
+                        categories: provider.categories,
+                        onSelected: _openCategory,
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                    SliverList.builder(
+                      itemCount: provider.shelves.length,
+                      itemBuilder: (context, index) {
+                        final shelf = provider.shelves[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 28),
+                          child: BookCarousel(
+                            title: shelf.label,
+                            books: shelf.books,
+                            favoriteKeys: favoriteKeys,
+                            posterWidth: posterWidth,
+                            onBookTap: _openDetail,
+                            onToggleFavorite: _toggleFavorite,
+                            onSeeAll: () => _openCategory(shelf.subject, shelf.label),
+                          ),
+                        );
+                      },
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                  ],
+                ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 8)),
-            ],
+            ),
           ),
         );
     }
@@ -177,6 +186,13 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          Consumer<ThemeProvider>(
+            builder: (_, tp, _) => IconButton(
+              tooltip: 'Toggle theme',
+              onPressed: tp.toggle,
+              icon: Icon(tp.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
+            ),
+          ),
           IconButton(
             tooltip: 'Shuffle shelves',
             onPressed: onShuffle,
@@ -194,13 +210,14 @@ class _SearchBarButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Material(
-        color: AppColors.surfaceHigh,
+        color: colors.surfaceContainer,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(28),
-          side: const BorderSide(color: AppColors.outline),
+          side: BorderSide(color: colors.outline),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(28),
@@ -209,12 +226,12 @@ class _SearchBarButton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
-                const Icon(Icons.search, color: AppColors.textMuted, size: 22),
+                Icon(Icons.search, color: colors.onSurfaceVariant, size: 22),
                 const SizedBox(width: 12),
                 Text(
                   'Search millions of books...',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textMuted,
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
               ],

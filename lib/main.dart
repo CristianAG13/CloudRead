@@ -4,7 +4,8 @@ import 'package:provider/provider.dart';
 import 'providers/books_provider.dart';
 import 'providers/favorites_provider.dart';
 import 'providers/nav_controller.dart';
-import 'screens/home_shell.dart';
+import 'providers/theme_provider.dart';
+import 'screens/splash_screen.dart';
 import 'services/favorites_storage.dart';
 import 'theme/app_theme.dart';
 
@@ -37,12 +38,17 @@ class CloudReadApp extends StatelessWidget {
               FavoritesProvider(storage: favoritesStorage)..loadFavorites(),
         ),
         ChangeNotifierProvider(create: (_) => NavController()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
-      child: MaterialApp(
-        title: 'CloudRead',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.dark,
-        home: const HomeShell(),
+      child: Consumer<ThemeProvider>(
+        builder: (_, themeProvider, _) => MaterialApp(
+          title: 'CloudRead',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: themeProvider.mode,
+          home: const SplashScreen(),
+        ),
       ),
     );
   }

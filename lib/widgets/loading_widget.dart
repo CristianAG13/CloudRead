@@ -1,9 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-class LoadingWidget extends StatelessWidget {
+class LoadingWidget extends StatefulWidget {
   final String message;
 
   const LoadingWidget({super.key, this.message = 'Loading books...'});
+
+  @override
+  State<LoadingWidget> createState() => _LoadingWidgetState();
+}
+
+class _LoadingWidgetState extends State<LoadingWidget> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,39 +30,24 @@ class LoadingWidget extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Book pages flipping animation
-          SizedBox(
-            height: 40,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, (i) {
-                return TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  duration: Duration(milliseconds: 600 + i * 150),
-                  builder: (context, value, child) {
-                    return Transform.scale(
-                      scaleY: 1.0 + 0.6 * (value < 0.5 ? value * 2 : 2 - value * 2),
-                      child: Container(
-                        width: 10,
-                        height: 28,
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.6 + 0.4 * (1 - value)),
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      ),
-                    );
-                  },
-                  onEnd: () {},
-                );
-              }),
+          // Elegant pulsating circular indicator instead of broken tween
+          ScaleTransition(
+            scale: Tween<double>(begin: 0.9, end: 1.15).animate(
+              CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+            ),
+            child: Icon(
+              Icons.auto_stories_rounded,
+              color: theme.colorScheme.primary.withValues(alpha: 0.9),
+              size: 42,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           Text(
-            message,
+            widget.message,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
+              letterSpacing: 0.5,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],

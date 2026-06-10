@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../theme/app_theme.dart';
 
 /// Centralized cover image. Decodes at display size (`cacheWidth`) so images
 /// load and paint fast, fades in smoothly, and shows a lightweight shimmer
@@ -68,6 +67,7 @@ class _ShimmerBoxState extends State<_ShimmerBox>
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return AnimatedBuilder(
       animation: _c,
       builder: (context, child) {
@@ -77,10 +77,10 @@ class _ShimmerBoxState extends State<_ShimmerBox>
             gradient: LinearGradient(
               begin: Alignment(-1 - 2 * (1 - t), 0),
               end: Alignment(1 - 2 * (1 - t), 0),
-              colors: const [
-                AppColors.surfaceHigh,
-                AppColors.surfaceHigher,
-                AppColors.surfaceHigh,
+              colors: [
+                colors.surfaceContainer,
+                colors.surfaceContainerHighest,
+                colors.surfaceContainer,
               ],
               stops: const [0.35, 0.5, 0.65],
             ),
@@ -90,7 +90,7 @@ class _ShimmerBoxState extends State<_ShimmerBox>
       },
       child: Center(
         child: Icon(Icons.menu_book_rounded,
-            size: widget.iconSize, color: AppColors.textMuted),
+            size: widget.iconSize, color: colors.onSurfaceVariant),
       ),
     );
   }
@@ -102,10 +102,11 @@ class _ErrorBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Container(
-      color: AppColors.surfaceHigher,
+      color: colors.surfaceContainerHighest,
       alignment: Alignment.center,
-      child: Icon(Icons.menu_book_rounded, size: iconSize, color: AppColors.textMuted),
+      child: Icon(Icons.menu_book_rounded, size: iconSize, color: colors.onSurfaceVariant),
     );
   }
 }

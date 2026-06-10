@@ -5,8 +5,8 @@ import '../providers/favorites_provider.dart';
 import '../providers/nav_controller.dart';
 import '../models/book.dart';
 import '../widgets/book_grid.dart';
-import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
+import '../widgets/shimmer_loading.dart';
 import 'book_detail_screen.dart';
 
 /// Full grid for a single category, opened from Home chips or "See all".
@@ -47,23 +47,18 @@ class _CategoryScreenState extends State<CategoryScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<BooksProvider>();
-    final favorites = context.watch<FavoritesProvider>();
-    final favoriteKeys = favorites.favorites.map((b) => b.key).toSet();
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.label)),
-      body: _buildBody(provider, favoriteKeys),
+      body: _buildBody(context, provider),
     );
   }
 
-  Widget _buildBody(
-    BooksProvider provider,
-    Set<String> favoriteKeys,
-  ) {
+  Widget _buildBody(BuildContext context, BooksProvider provider) {
     switch (provider.browseState) {
       case LoadingState.idle:
       case LoadingState.loading:
-        return const LoadingWidget(message: 'Loading collection...');
+        return const ShimmerGridLoading();
       case LoadingState.error:
         return AppErrorWidget(
           message: provider.errorMessage,
@@ -73,17 +68,20 @@ class _CategoryScreenState extends State<CategoryScreen> {
         if (provider.browseResults.isEmpty) {
           return const AppErrorWidget(message: 'No books in this category.');
         }
-        return CustomScrollView(
-          slivers: [
-            const SliverToBoxAdapter(child: SizedBox(height: 8)),
-            BookGrid(
-              books: provider.browseResults,
-              favoriteKeys: favoriteKeys,
-              onBookTap: _openDetail,
-              onToggleFavorite: _toggleFavorite,
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          ],
+        return Selector<FavoritesProvider, Set<String>>(
+          selector: (_, f) => f.favorites.map((b) => b.key).toSet(),
+          builder: (_, favoriteKeys, _) => CustomScrollView(
+            slivers: [
+              const SliverToBoxAdapter(child: SizedBox(height: 8)),
+              BookGrid(
+                books: provider.browseResults,
+                favoriteKeys: favoriteKeys,
+                onBookTap: _openDetail,
+                onToggleFavorite: _toggleFavorite,
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+          ),
         );
     }
   }

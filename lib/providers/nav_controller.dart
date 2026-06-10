@@ -6,6 +6,7 @@ class NavController extends ChangeNotifier {
   static const int home = 0;
   static const int search = 1;
   static const int favorites = 2;
+  static const int stats = 3;
 
   int _index = home;
   int get index => _index;
@@ -17,4 +18,5 @@ class NavController extends ChangeNotifier {
   }
 
   void goToFavorites() => goTo(favorites);
+  void goToStats() => goTo(stats);
 }

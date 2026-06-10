@@ -1,3 +1,5 @@
+import 'reading_status.dart';
+
 class Book {
   final String key;
   final String title;
@@ -13,6 +15,21 @@ class Book {
   /// Populated by [ApiService.fetchReadUrl] on demand, not persisted.
   final String? readUrl;
 
+  /// User's personal notes on this favorite book.
+  final String? personalNote;
+
+  /// User's personal rating (0.0 to 5.0).
+  final double? personalRating;
+
+  /// User-defined tags (lowercase, deduped).
+  final List<String> tags;
+
+  /// Reading progress status.
+  final ReadingStatus readingStatus;
+
+  /// UTC timestamp of when this book was added to favorites.
+  final DateTime? addedAt;
+
   Book({
     required this.key,
     required this.title,
@@ -23,6 +40,11 @@ class Book {
     this.subjects = const [],
     this.numberOfPages,
     this.readUrl,
+    this.personalNote,
+    this.personalRating,
+    this.tags = const [],
+    this.readingStatus = ReadingStatus.toRead,
+    this.addedAt,
   });
 
   factory Book.fromSearchJson(Map<String, dynamic> json) {
@@ -87,7 +109,12 @@ class Book {
       'description': description,
       'subjects': subjects,
       'number_of_pages': numberOfPages,
-    };
+      'personal_note': personalNote,
+      'personal_rating': personalRating,
+      'reading_status': readingStatus.name,
+      'tags': tags,
+      'added_at': addedAt?.toUtc().toIso8601String(),
+    }..removeWhere((_, v) => v == null);
   }
 
   /// Restores a [Book] from a stored JSON map. Tolerates missing fields.
@@ -101,6 +128,11 @@ class Book {
       description: json['description'] as String?,
       subjects: (json['subjects'] as List?)?.cast<String>() ?? const [],
       numberOfPages: json['number_of_pages'] as int?,
+      personalNote: json['personal_note'] as String?,
+      personalRating: (json['personal_rating'] as num?)?.toDouble(),
+      readingStatus: ReadingStatusX.fromName(json['reading_status'] as String?),
+      tags: (json['tags'] as List?)?.cast<String>() ?? const [],
+      addedAt: json['added_at'] != null ? DateTime.tryParse(json['added_at'] as String) : null,
     );
   }
 
@@ -119,21 +151,33 @@ class Book {
   }
 
   Book copyWith({
+    String? title,
+    String? authorName,
     String? description,
     List<String>? subjects,
     int? numberOfPages,
     String? readUrl,
+    String? personalNote,
+    double? personalRating,
+    List<String>? tags,
+    ReadingStatus? readingStatus,
+    DateTime? addedAt,
   }) {
     return Book(
       key: key,
-      title: title,
-      authorName: authorName,
+      title: title ?? this.title,
+      authorName: authorName ?? this.authorName,
       coverId: coverId,
       firstPublishYear: firstPublishYear,
       description: description ?? this.description,
       subjects: subjects ?? this.subjects,
       numberOfPages: numberOfPages ?? this.numberOfPages,
       readUrl: readUrl ?? this.readUrl,
+      personalNote: personalNote ?? this.personalNote,
+      personalRating: personalRating ?? this.personalRating,
+      tags: tags ?? this.tags,
+      readingStatus: readingStatus ?? this.readingStatus,
+      addedAt: addedAt ?? this.addedAt,
     );
   }
 }

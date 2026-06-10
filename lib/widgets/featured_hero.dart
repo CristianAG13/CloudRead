@@ -41,13 +41,15 @@ class FeaturedHero extends StatelessWidget {
               ),
             ),
           ),
-          const DecoratedBox(
+          DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: AppColors.heroScrim,
-                stops: [0.0, 0.55, 1.0],
+                colors: theme.brightness == Brightness.dark
+                    ? AppColors.heroScrim
+                    : [Colors.transparent, Colors.white.withValues(alpha: 0.85), Colors.white],
+                stops: const [0.0, 0.55, 1.0],
               ),
             ),
           ),
@@ -74,10 +76,13 @@ class FeaturedHero extends StatelessWidget {
                     child: SizedBox(
                       width: 130,
                       height: 195,
-                      child: BookCover(
-                        url: book.coverUrl,
-                        displayWidth: 130,
-                        borderRadius: BorderRadius.circular(14),
+                      child: Hero(
+                        tag: 'book_cover_${book.key}',
+                        child: BookCover(
+                          url: book.coverUrl,
+                          displayWidth: 130,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                     ),
                   ),
@@ -118,7 +123,7 @@ class FeaturedHero extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleSmall?.copyWith(
-                          color: AppColors.textSecondary,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -130,13 +135,13 @@ class FeaturedHero extends StatelessWidget {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.menu_book_rounded,
-                                      size: 18, color: AppColors.onAccent),
+                                  Icon(Icons.menu_book_rounded,
+                                      size: 18, color: theme.colorScheme.onPrimary),
                                   const SizedBox(width: 8),
                                   Text(
                                     'Details',
                                     style: theme.textTheme.labelLarge?.copyWith(
-                                      color: AppColors.onAccent,
+                                      color: theme.colorScheme.onPrimary,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -150,7 +155,7 @@ class FeaturedHero extends StatelessWidget {
                             onTap: onToggleFavorite,
                             iconSize: 20,
                             padding: const EdgeInsets.all(13),
-                            background: AppColors.surfaceHigh,
+                            background: theme.colorScheme.surfaceContainer,
                           ),
                         ],
                       ),

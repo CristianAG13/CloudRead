@@ -9,15 +9,23 @@ import 'hover_scale.dart';
 class BookCard extends StatelessWidget {
   final Book book;
   final bool isFavorite;
+  final bool selectionMode;
+  final bool isSelected;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final VoidCallback onToggleFavorite;
+  final VoidCallback? onSelectToggle;
 
   const BookCard({
     super.key,
     required this.book,
     required this.isFavorite,
     required this.onTap,
+    this.onLongPress,
     required this.onToggleFavorite,
+    this.selectionMode = false,
+    this.isSelected = false,
+    this.onSelectToggle,
   });
 
   @override
@@ -26,7 +34,8 @@ class BookCard extends StatelessWidget {
     final radius = BorderRadius.circular(12);
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: selectionMode ? onSelectToggle ?? onTap : onTap,
+      onLongPress: onLongPress,
       behavior: HitTestBehavior.opaque,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,18 +50,22 @@ class BookCard extends StatelessWidget {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       borderRadius: radius,
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 1),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 5),
+                          color: Colors.black.withValues(alpha: 0.6),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),
-                    child: BookCover(
-                      url: book.coverUrlMedium,
-                      displayWidth: 190,
-                      borderRadius: radius,
+                    child: Hero(
+                      tag: 'book_cover_${book.key}',
+                      child: BookCover(
+                        url: book.coverUrlMedium,
+                        displayWidth: 190,
+                        borderRadius: radius,
+                      ),
                     ),
                   ),
                 ),
@@ -64,6 +77,27 @@ class BookCard extends StatelessWidget {
                     onTap: onToggleFavorite,
                   ),
                 ),
+                if (selectionMode)
+                  Positioned.fill(
+                    child: Material(
+                      color: isSelected
+                          ? Colors.black.withValues(alpha: 0.35)
+                          : Colors.black.withValues(alpha: 0.15),
+                      child: InkWell(
+                        onTap: onSelectToggle,
+                        child: Align(
+                          alignment: Alignment.topLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Icon(
+                              isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                              color: isSelected ? AppColors.accent : Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -87,7 +121,7 @@ class BookCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textMuted,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],

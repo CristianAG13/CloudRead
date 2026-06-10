@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 
 /// Horizontal, scrollable list of category pills shown on the Home screen.
 class CategoryChips extends StatelessWidget {
@@ -30,10 +29,10 @@ class CategoryChips extends StatelessWidget {
         itemBuilder: (context, index) {
           final entry = entries[index];
           return Material(
-            color: AppColors.surfaceHigh,
+            color: theme.colorScheme.surfaceContainer,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
-              side: const BorderSide(color: AppColors.outline),
+              side: BorderSide(color: theme.colorScheme.outline),
             ),
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
@@ -43,7 +42,7 @@ class CategoryChips extends StatelessWidget {
                 child: Text(
                   entry.value,
                   style: theme.textTheme.labelLarge?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: theme.colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
