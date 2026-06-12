@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/book.dart';
 import '../models/reading_status.dart';
+import 'book_cover.dart';
 import 'tags_chip_input.dart';
 
 class FavoriteCrudSheet extends StatefulWidget {
@@ -47,6 +48,17 @@ class _FavoriteCrudSheetState extends State<FavoriteCrudSheet> {
   ReadingStatus _status = ReadingStatus.toRead;
   List<String> _tags = const [];
 
+  /// A book is "custom" (manually created) when there is no book to edit, or
+  /// its key was generated locally. Custom books let the user type the title
+  /// and author; catalog books (from the API) show their cover instead.
+  bool get _isCustom =>
+      widget.bookToEdit == null || widget.bookToEdit!.key.startsWith('manual_');
+
+  String get _sheetTitle {
+    if (widget.bookToEdit == null) return 'Add Custom Book';
+    return _isCustom ? 'Edit Book' : 'Rate & Review';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -68,32 +80,36 @@ class _FavoriteCrudSheetState extends State<FavoriteCrudSheet> {
   }
 
   void _save() {
-    if (_formKey.currentState!.validate()) {
-      final isNew = widget.bookToEdit == null;
-      final key = isNew
-          ? 'manual_${DateTime.now().millisecondsSinceEpoch}'
-          : widget.bookToEdit!.key;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
-      final updatedBook = Book(
-        key: key,
+    final existing = widget.bookToEdit;
+    final Book result;
+    if (existing != null) {
+      // Preserve all catalog metadata (cover, year, subjects, addedAt…) and
+      // only overwrite user-editable fields. Custom books can also change
+      // their title/author.
+      result = existing.copyWith(
+        title: _isCustom ? _titleCtrl.text.trim() : null,
+        authorName: _isCustom ? _authorCtrl.text.trim() : null,
+        personalNote: _notesCtrl.text.trim(),
+        personalRating: _rating,
+        readingStatus: _status,
+        tags: _tags,
+      );
+    } else {
+      result = Book(
+        key: 'manual_${DateTime.now().millisecondsSinceEpoch}',
         title: _titleCtrl.text.trim(),
         authorName: _authorCtrl.text.trim(),
         personalNote: _notesCtrl.text.trim(),
         personalRating: _rating,
         readingStatus: _status,
         tags: _tags,
-        coverId: widget.bookToEdit?.coverId,
-        firstPublishYear: widget.bookToEdit?.firstPublishYear,
-        description: widget.bookToEdit?.description,
-        subjects: widget.bookToEdit?.subjects ?? const [],
-        numberOfPages: widget.bookToEdit?.numberOfPages,
-        readUrl: widget.bookToEdit?.readUrl,
-        addedAt: widget.bookToEdit?.addedAt,
       );
-
-      widget.onSave(updatedBook);
-      Navigator.of(context).pop();
     }
+
+    widget.onSave(result);
+    Navigator.of(context).pop();
   }
 
   @override
@@ -121,40 +137,52 @@ class _FavoriteCrudSheetState extends State<FavoriteCrudSheet> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 24),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: colors.onSurfaceVariant.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
               Text(
-                widget.bookToEdit == null ? 'Add Custom Book' : 'Edit Favorite',
+                _sheetTitle,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 24),
-              TextFormField(
-                controller: _titleCtrl,
-                style: theme.textTheme.bodyLarge,
-                decoration: InputDecoration(
-                  labelText: 'Book Title',
-                  filled: true,
-                  fillColor: colors.surfaceContainer,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+
+              // Catalog books show their cover; custom entries get text inputs.
+              if (_isCustom) ...[
+                TextFormField(
+                  controller: _titleCtrl,
+                  style: theme.textTheme.bodyLarge,
+                  decoration: InputDecoration(
+                    labelText: 'Book Title',
+                    filled: true,
+                    fillColor: colors.surfaceContainer,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none),
+                  ),
+                  validator: (val) => val != null && val.trim().isEmpty
+                      ? 'Title is required'
+                      : null,
                 ),
-                validator: (val) => val != null && val.trim().isEmpty ? 'Title is required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _authorCtrl,
-                style: theme.textTheme.bodyLarge,
-                decoration: InputDecoration(
-                  labelText: 'Author Name',
-                  filled: true,
-                  fillColor: colors.surfaceContainer,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _authorCtrl,
+                  style: theme.textTheme.bodyLarge,
+                  decoration: InputDecoration(
+                    labelText: 'Author Name',
+                    filled: true,
+                    fillColor: colors.surfaceContainer,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none),
+                  ),
                 ),
-              ),
+              ] else
+                _CoverHeader(book: widget.bookToEdit!),
+
               const SizedBox(height: 24),
               Text(
                 'Reading Status',
@@ -247,6 +275,65 @@ class _FavoriteCrudSheetState extends State<FavoriteCrudSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Read-only cover + title + author shown when editing a catalog book.
+class _CoverHeader extends StatelessWidget {
+  final Book book;
+
+  const _CoverHeader({required this.book});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: SizedBox(
+            width: 120,
+            height: 180,
+            child: BookCover(
+              url: book.coverUrl,
+              displayWidth: 120,
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          book.title,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        if (book.authorName != null && book.authorName!.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            book.authorName!,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

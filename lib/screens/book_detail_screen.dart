@@ -5,9 +5,9 @@ import 'package:url_launcher/url_launcher.dart'; // Add url_launcher
 import '../models/book.dart';
 import '../providers/books_provider.dart';
 import '../providers/favorites_provider.dart';
-import '../providers/nav_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/book_cover.dart';
+import '../widgets/favorite_crud_sheet.dart';
 import '../widgets/gradient_button.dart';
 import 'category_screen.dart';
 
@@ -200,7 +200,7 @@ class _Header extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       blurRadius: 24,
                       offset: const Offset(0, 10),
                     ),
@@ -247,10 +247,65 @@ class _Header extends StatelessWidget {
                 const SizedBox(height: 10),
               ],
               _FavoriteAction(book: book, isFavorite: isFavorite),
+              if (isFavorite) ...[
+                const SizedBox(height: 10),
+                _RateAction(book: book),
+              ],
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Shown only when the book is already a favorite: opens the edit/rate sheet
+/// (cover + reading status + tags + notes + rating) for this exact book.
+class _RateAction extends StatelessWidget {
+  final Book book;
+
+  const _RateAction({required this.book});
+
+  void _openSheet(BuildContext context) {
+    final provider = context.read<FavoritesProvider>();
+    // Use the stored favorite (it carries rating/status/tags/notes); fall back
+    // to the detail book if for some reason it isn't found.
+    final favorite = provider.favorites.firstWhere(
+      (b) => b.key == book.key,
+      orElse: () => book,
+    );
+    FavoriteCrudSheet.show(
+      context,
+      bookToEdit: favorite,
+      onSave: provider.updateFavorite,
+      onDelete: () => provider.removeFavorite(book.key),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => _openSheet(context),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: colors.onSurface,
+          side: BorderSide(color: colors.outline),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        icon: Icon(Icons.edit_note_rounded, size: 20, color: colors.primary),
+        label: Text(
+          'Rate & review',
+          style: theme.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -363,16 +418,19 @@ class _FavoriteAction extends StatelessWidget {
   const _FavoriteAction({required this.book, required this.isFavorite});
 
   Future<void> _onTap(BuildContext context) async {
-    final nav = context.read<NavController>();
     final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-    final added = await context.read<FavoritesProvider>().toggleFavorite(book);
+    final provider = context.read<FavoritesProvider>();
+    final added = await provider.toggleFavorite(book);
     if (!context.mounted) return;
+    messenger.hideCurrentSnackBar();
     if (added) {
-      nav.goToFavorites();
-      navigator.popUntil((route) => route.isFirst);
+      // Stay on this screen so the user can immediately rate/review the book
+      // via the "Rate & review" button that now appears below.
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Added to your library'),
+        duration: Duration(seconds: 2),
+      ));
     } else {
-      messenger.hideCurrentSnackBar();
       messenger.showSnackBar(SnackBar(
         content: const Text('Removed from your library'),
         duration: const Duration(seconds: 6),
@@ -380,7 +438,6 @@ class _FavoriteAction extends StatelessWidget {
           label: 'Undo',
           onPressed: () async {
             // Try to cancel pending remove and re-add locally.
-            final provider = context.read<FavoritesProvider>();
             final cancelled = await provider.cancelPendingAction(book.key);
             if (cancelled) {
               // Re-add the book locally; toggleFavorite will enqueue an 'add'.
