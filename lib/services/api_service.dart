@@ -92,7 +92,7 @@ class ApiService {
     );
   }
 
-  /// Fetch full work details (description, subjects, etc.)
+ 
   Future<Book> fetchWorkDetails(String workKey) async {
     final uri = Uri.parse('$_baseUrl$workKey.json');
     if (_cache.containsKey(uri.toString())) {

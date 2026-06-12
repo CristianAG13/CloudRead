@@ -10,6 +10,7 @@ import '../widgets/book_cover.dart';
 import '../widgets/book_grid.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/favorite_crud_sheet.dart';
+import '../widgets/favorite_picker_sheet.dart';
 import '../widgets/favorites_filter_chips.dart';
 import '../widgets/favorites_sort_menu.dart';
 import '../widgets/favorites_stats_row.dart';
@@ -102,6 +103,22 @@ class _FavoritesScreenState extends State<FavoritesScreen>
             }
           : null,
     );
+  }
+
+  /// Opens a carousel of the user's favorites; once one is picked, shows the
+  /// rate/review sheet for it.
+  Future<void> _pickAndRate() async {
+    final provider = context.read<FavoritesProvider>();
+    final books = provider.favorites;
+    if (books.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add some books to your library first')),
+      );
+      return;
+    }
+    final selected = await FavoritePickerSheet.show(context, books);
+    if (selected == null || !mounted) return;
+    _showCrudSheet(book: selected);
   }
 
   void _showUndo() {
@@ -360,9 +377,9 @@ class _FavoritesScreenState extends State<FavoritesScreen>
           tooltip: 'Select books',
         ),
         IconButton(
-          onPressed: () => _showCrudSheet(),
+          onPressed: totalCount == 0 ? null : _pickAndRate,
           icon: const Icon(Icons.add_circle_outline_rounded),
-          tooltip: 'Add Custom Book',
+          tooltip: 'Rate a book',
         ),
       ],
     );

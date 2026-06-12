@@ -40,8 +40,10 @@ class BookCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AspectRatio(
-            aspectRatio: 2 / 3,
+          // The cover fills all leftover vertical space; the title/author are
+          // laid out first at their natural height, so the card can never
+          // overflow regardless of the grid cell's aspect ratio.
+          Expanded(
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -50,7 +52,8 @@ class BookCard extends StatelessWidget {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       borderRadius: radius,
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 1),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.05), width: 1),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.6),
@@ -90,7 +93,9 @@ class BookCard extends StatelessWidget {
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Icon(
-                              isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                              isSelected
+                                  ? Icons.check_circle
+                                  : Icons.radio_button_unchecked,
                               color: isSelected ? AppColors.accent : Colors.white,
                             ),
                           ),
@@ -102,31 +107,41 @@ class BookCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Text(
+            book.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              height: 1.2,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            book.authorName ?? 'Unknown author',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          // Personal rating (only present for rated favorites).
+          if (book.personalRating != null && book.personalRating! > 0) ...[
+            const SizedBox(height: 3),
+            Row(
               children: [
+                const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+                const SizedBox(width: 3),
                 Text(
-                  book.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  book.authorName ?? 'Unknown author',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  book.personalRating!.toStringAsFixed(1),
+                  style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
-          ),
+          ],
         ],
       ),
     );
